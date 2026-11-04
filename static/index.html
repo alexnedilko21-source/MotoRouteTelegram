@@ -1,0 +1,99 @@
+<!doctype html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>МотоМаршрут</title><script src="https://telegram.org/js/telegram-web-app.js"></script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzx3JFs+Xb2I7hJpG1fOm4=" crossorigin=""><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script><style>
+:root{font-family:-apple-system,BlinkMacSystemFont,Inter,Arial,sans-serif;color:#f8f9f5;background:#101717}*{box-sizing:border-box}body{margin:0}main{max-width:530px;margin:auto;padding:18px 16px 90px}header{display:flex;align-items:center;justify-content:space-between}h1{font-size:25px;margin:0}small,.muted{color:#9daaa7}h2{font-size:18px}.yellow{color:#ffd42b}.card{border:1px solid #394443;border-radius:20px;padding:16px;margin-top:16px;background:#202b2b}button,select,input,textarea{font:inherit}button{border:0;border-radius:14px;padding:13px 15px;font-weight:700;cursor:pointer}button.primary{background:#ffcf21;color:#141817}button.secondary{background:#354340;color:white}button.outline{background:transparent;color:#f6d145;border:1px solid #ad9033}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}select,textarea,input[type=text]{width:100%;border:1px solid #4c5d59;background:#162222;color:#fff;border-radius:12px;padding:12px}textarea{height:114px;resize:vertical}label{display:block;margin:10px 0 6px;font-size:14px}.stop{display:flex;align-items:center;gap:8px;margin:9px 0}.stop .num{border-radius:50%;width:28px;height:28px;display:grid;place-items:center;background:#ffcd2d;color:#131616;font-weight:800;flex-shrink:0}.stop input{min-width:0;flex:1}.stop .remove{padding:9px;color:#fff;background:#47504b}.stop.done{opacity:.43}.stop.done input{text-decoration:line-through}.drive{display:flex;gap:8px;margin-top:12px}.drive button{flex:1}.note{font-size:12px;line-height:1.5;color:#a7b1ad}#map{height:315px;border-radius:16px;overflow:hidden;background:#dfe5df}.maptools{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.maptools button{flex:1}.map-hint{font-size:12px;line-height:1.5;color:#a7b1ad}.leaflet-container{font-family:inherit}.moto-pin{font-size:27px;filter:drop-shadow(0 2px 3px #161d1d99)}.point-pin{border-radius:50%;background:#ffcf21;color:#101717;font-size:14px;font-weight:900;width:29px;height:29px;line-height:25px;text-align:center;border:2px solid #fff;box-shadow:0 3px 7px #0004}.hidden{display:none}#status{margin-top:10px;font-size:13px;color:#f7d748}
+</style></head><body><main><header><div><small>Telegram Mini App · прототип</small><h1>🛵 Мото<span class="yellow">Маршрут</span></h1></div><div style="font-size:25px">📍</div></header><div class="card"><div id="map" role="application" aria-label="Реальная карта с точками доставки" style="display:none"></div><iframe id="backupMap" title="Запасная карта Киева" loading="lazy" referrerpolicy="no-referrer" style="display:block;width:100%;height:315px;border:0;border-radius:16px" src="https://www.openstreetmap.org/export/embed.html?bbox=30.49%2C50.43%2C30.68%2C50.53&amp;layer=mapnik"></iframe><div class="maptools"><button type="button" class="outline" id="switchmap">🗺 Экспериментальные точки</button></div><div class="maptools"><button class="secondary" id="locate">🛵 Где я</button><button class="secondary" id="showpins">📍 Показать адреса</button></div><p class="map-hint" id="mapstatus">Карта Киева. Для просмотра точек нажмите «Показать точки на карте». Для поездки — Google Maps или Waze.</p><p class="note">Жёлтый скутер 🛵 показывается в режиме точек при доступной геолокации. Линии между точками показывают порядок, а не дороги. Повороты и голос ведёт Google Maps / Waze.</p></div><div class="card"><h2>1. Фото адресов</h2><div class="buttons"><button class="primary" onclick="document.getElementById('camera').click()">📷 Снять фото</button><button class="secondary" onclick="document.getElementById('upload').click()">▣ Загрузить</button></div><input id="camera" class="hidden" type="file" accept="image/*" capture="environment"><input id="upload" class="hidden" type="file" accept="image/*"><label for="mode">Распознавание</label><select id="mode"><option value="gemini">Google AI Studio · Gemini API</option><option value="local">Локальное OCR (нужен Tesseract)</option></select><div id="status">Ожидаю фотографию</div></div><div class="card"><h2>2. Адреса по порядку</h2><label for="manual">Или вставьте адреса, каждый с новой строки</label><textarea id="manual" placeholder="ул. Крещатик, 21&#10;ул. Саксаганского, 87"></textarea><button class="secondary" style="width:100%;margin-top:8px" id="apply">Добавить адреса из текста</button><div id="stops"></div><button class="outline" id="add" style="width:100%;margin-top:8px">+ Добавить адрес</button><p class="note">Проверяйте адреса после OCR: номера почтоматов не всегда совпадают с почтовыми адресами. Порядок не оптимизируется.</p></div><div class="card"><h2>3. Навигация</h2><p class="muted" id="current">Сначала добавьте адреса</p><div class="drive"><button class="primary" id="google">↗ Google Maps</button><button class="secondary" id="waze">↗ Waze</button></div><div class="drive"><button class="secondary" id="done">✓ Доставлено / Следующий</button><button class="secondary" id="reset">↺ Сначала</button></div><p class="note">Открывается навигация к одной текущей остановке. После доставки вернитесь в приложение и отметьте её выполненной. Список хранится в этом браузере на устройстве, не синхронизируется между Mac и телефоном.</p></div></main><script>
+window.Telegram?.WebApp?.ready();window.Telegram?.WebApp?.expand();
+let map, stopLayer, userMarker, userWatch=null, geocodeBusy=false;
+const pinIcon=(n)=>window.L?.divIcon({html:'<div class="point-pin">'+n+'</div>',className:'',iconSize:[29,29],iconAnchor:[15,15]});
+const motoIcon=window.L?.divIcon({html:'<div class="moto-pin">🛵</div>',className:'',iconSize:[36,36],iconAnchor:[18,18]});
+if(window.L){
+  map=L.map('map',{zoomControl:true}).setView([50.4789762,30.5926348],13);
+  // Two base maps plus an independent embedded-map fallback.
+  const osmAttr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const sources=[
+    ['CARTO','https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:osmAttr+' &copy; CARTO'}],
+    ['OpenStreetMap','https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:osmAttr}]
+  ];
+  let provider=0,basemap=null,failedTiles=0,loadedTiles=0,mode='leaflet';
+  const msg=document.getElementById('mapstatus');
+  const backup=document.getElementById('backupMap');
+  function showEmbedded(){
+    mode='embedded';document.getElementById('map').style.display='none';
+    backup.style.display='block';msg.textContent='Запасная реальная карта. GPS-значок и точки доставки доступны в обычном режиме карты. Навигация — Google Maps / Waze.';
+  }
+  function installSource(i){
+    mode='leaflet';provider=i;failedTiles=0;loadedTiles=0;
+    backup.style.display='none';document.getElementById('map').style.display='block';
+    if(basemap)map.removeLayer(basemap);
+    basemap=L.tileLayer(sources[i][1],sources[i][2]).addTo(map);
+    basemap.on('tileload',()=>{loadedTiles++;});
+    basemap.on('tileerror',()=>{failedTiles++;if(failedTiles>=3){showEmbedded();document.getElementById('switchmap').textContent='🗺 Экспериментальные точки';}});
+    msg.textContent='Карта: '+sources[i][0]+'. Если карта отображается частично, вернитесь к стабильной карте.';
+    setTimeout(()=>{if(mode==='leaflet')map.invalidateSize({pan:false,animate:false});},350);
+  }
+  document.getElementById('switchmap').onclick=()=>{
+    if(mode==='embedded'){installSource(1);document.getElementById('switchmap').textContent='🗺 Вернуться к стабильной карте';}
+    else {showEmbedded();document.getElementById('switchmap').textContent='🗺 Экспериментальные точки';}
+  };
+  showEmbedded();
+  // Do not use ResizeObserver here: repeated invalidateSize can cause a resize loop.
+  window.addEventListener('resize',()=>map.invalidateSize({pan:false,animate:false}));
+  setTimeout(()=>map.invalidateSize({pan:false,animate:false}),900);
+  stopLayer=L.layerGroup().addTo(map);
+}else{document.getElementById('mapstatus').textContent='Карта не загрузилась. Проверьте интернет.'}
+const coordCache=new Map();
+async function geocodeAddress(address){
+  const q=address.trim() + (/киев|київ|kyiv/i.test(address)?'':', Київ, Україна');
+  if(coordCache.has(q))return coordCache.get(q);
+  const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ua&q='+encodeURIComponent(q);
+  const resp=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!resp.ok)throw Error('Геокодер временно недоступен ('+resp.status+')');
+  const out=await resp.json();const coords=out.length?[+out[0].lat,+out[0].lon]:null;
+  coordCache.set(q,coords);return coords;
+}
+async function showPins(){
+  if(!map||geocodeBusy)return;
+  if(document.getElementById('backupMap').style.display!=='none'){document.getElementById('switchmap').click();}
+  if(!items.length){document.getElementById('mapstatus').textContent='Сначала добавьте адреса';return}
+  geocodeBusy=true;stopLayer.clearLayers();let coordinates=[],missed=[];
+  document.getElementById('showpins').disabled=true;
+  try{
+    for(let i=0;i<items.length;i++){
+      document.getElementById('mapstatus').textContent='Ищу на карте '+(i+1)+' / '+items.length;
+      if(!items[i].trim()){missed.push(i+1);continue}
+      try{
+        const latlng=await geocodeAddress(items[i]);
+        if(latlng){L.marker(latlng,{icon:pinIcon(i+1)}).addTo(stopLayer).bindPopup((i+1)+'. '+items[i]);coordinates.push(latlng)}
+        else missed.push(i+1);
+      }catch(err){missed.push(i+1)}
+      if(i<items.length-1)await new Promise(r=>setTimeout(r,1100));
+    }
+    // Straight connectors indicate visit order, NOT road navigation.
+    if(coordinates.length>1)L.polyline(coordinates,{color:'#edbd14',weight:4,dashArray:'8 9',opacity:.85}).addTo(stopLayer);
+    if(coordinates.length)map.fitBounds(L.latLngBounds(coordinates).pad(.24),{maxZoom:15});
+    document.getElementById('mapstatus').textContent='На карте '+coordinates.length+' точек. '+(missed.length?'Не найдены: '+missed.join(', ')+'. Проверьте адреса.':'Порядок как в списке.');
+  }finally{geocodeBusy=false;document.getElementById('showpins').disabled=false}
+}
+function locateUser(){
+  if(!map)return;
+  if(!navigator.geolocation){document.getElementById('mapstatus').textContent='Геолокация недоступна';return}
+  document.getElementById('mapstatus').textContent='Запрашиваю доступ к геолокации…';
+  if(userWatch!==null)navigator.geolocation.clearWatch(userWatch);
+  userWatch=navigator.geolocation.watchPosition(pos=>{
+    const p=[pos.coords.latitude,pos.coords.longitude];
+    if(!userMarker){userMarker=L.marker(p,{icon:motoIcon}).addTo(map);map.setView(p,16)}
+    else userMarker.setLatLng(p);
+    document.getElementById('mapstatus').textContent='🛵 GPS включён. Точность: около '+Math.round(pos.coords.accuracy)+' м.';
+  },e=>{document.getElementById('mapstatus').textContent='Нет GPS: '+e.message},{enableHighAccuracy:true,maximumAge:5000,timeout:12000});
+}
+document.getElementById('showpins').onclick=showPins;
+document.getElementById('locate').onclick=locateUser;
+
+let items=[];let active=0;const $=id=>document.getElementById(id);const save=()=>{try{localStorage.setItem('motoRoute',JSON.stringify({items,active}))}catch{}};
+try{const v=JSON.parse(localStorage.getItem('motoRoute')||'{}');items=Array.isArray(v.items)?v.items:[];active=Number.isInteger(v.active)?v.active:0}catch{}
+function render(){const container=$('stops');container.replaceChildren();items.forEach((address,i)=>{const row=document.createElement('div');row.className='stop'+(i<active?' done':'');const badge=document.createElement('span');badge.className='num';badge.textContent=i+1;const inp=document.createElement('input');inp.type='text';inp.value=address;inp.setAttribute('aria-label','Адрес '+(i+1));inp.onchange=()=>{items[i]=inp.value;save();render()};const x=document.createElement('button');x.className='remove';x.textContent='×';x.onclick=()=>{items.splice(i,1);if(active>i)active--;active=Math.min(active,items.length);save();render()};row.append(badge,inp,x);container.append(row)});$('current').textContent=active<items.length?`Точка ${active+1} из ${items.length}: ${items[active]}`:'Все точки завершены или список пуст';save()}
+function next(){if(active<items.length)active++;render()}
+function navigate(waze){if(active>=items.length)return alert('Нет текущего адреса');const address=items[active].trim();if(!address)return alert('Введите адрес');const q=encodeURIComponent(address+', Киев, Украина');const url=waze?'https://www.waze.com/ul?q='+q+'&navigate=yes':'https://www.google.com/maps/dir/?api=1&destination='+q+'&travelmode=driving';if(window.Telegram?.WebApp?.openLink)window.Telegram.WebApp.openLink(url);else window.open(url,'_blank','noopener')}
+$('google').onclick=()=>navigate(false);$('waze').onclick=()=>navigate(true);$('done').onclick=next;$('reset').onclick=()=>{active=0;render()};$('add').onclick=()=>{items.push('');render()};$('apply').onclick=()=>{const newitems=$('manual').value.split('\n').map(s=>s.replace(/^\s*\d+[.)-]?\s*/,'').trim()).filter(Boolean);if(newitems.length){items.push(...newitems);$('manual').value='';render()}};
+async function handleFile(file){if(!file)return;const modes=$('mode').value;const max=7*1024*1024;if(file.size>max)return $('status').textContent='Фото должно быть меньше 7 МБ';$('status').textContent='Распознаю фото…';try{const data=await new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=()=>resolve(String(rd.result).split(',')[1]);rd.onerror=reject;rd.readAsDataURL(file)});const response=await fetch('/api/recognize',{method:'POST',headers:{'Content-Type':'application/json','X-Telegram-Init-Data':window.Telegram?.WebApp?.initData||''},body:JSON.stringify({image:data,mime:file.type||'image/jpeg',mode:modes})});const output=await response.json();if(!response.ok)throw Error(output.error||'Ошибка сервера');items=output.lines;active=0;render();$('status').textContent=`Распознано строк: ${items.length}. Проверьте их перед поездкой.`}catch(err){$('status').textContent='Ошибка: '+err.message}}
+$('camera').onchange=e=>handleFile(e.target.files[0]);$('upload').onchange=e=>handleFile(e.target.files[0]);render();
+</script></body></html>
