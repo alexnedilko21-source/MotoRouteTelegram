@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: motoroute-telegram
+    runtime: python
+    plan: free
+    buildCommand: "echo Ready"
+    startCommand: "python3 server.py"
+    envVars:
+      - key: PUBLIC_MODE
+        value: "1"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
